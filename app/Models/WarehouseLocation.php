@@ -4,16 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Warehouse extends Model
+class WarehouseLocation extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'warehouse_id',
         'code',
         'name',
-        'address',
+        'type',
         'description',
         'is_active',
     ];
@@ -25,9 +27,8 @@ class Warehouse extends Model
         ];
     }
 
-    public function locations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function warehouse(): BelongsTo
     {
-        return $this->hasMany(WarehouseLocation::class);
+        return $this->belongsTo(Warehouse::class);
     }
 }
-

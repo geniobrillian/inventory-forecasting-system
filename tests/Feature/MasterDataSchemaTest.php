@@ -41,6 +41,11 @@ class MasterDataSchemaTest extends TestCase
         $this->assertTrue(Schema::hasColumns('products', [
             'id', 'sku', 'name', 'category_id', 'unit_id', 'supplier_id', 'purchase_price', 'selling_price', 'minimum_stock', 'lead_time_days', 'forecast_method', 'is_active', 'created_at', 'updated_at', 'deleted_at',
         ]));
+
+        $this->assertTrue(Schema::hasTable('warehouse_locations'));
+        $this->assertTrue(Schema::hasColumns('warehouse_locations', [
+            'id', 'warehouse_id', 'code', 'name', 'type', 'description', 'is_active', 'created_at', 'updated_at', 'deleted_at',
+        ]));
     }
 
     public function test_master_data_models_and_relationships(): void
@@ -77,6 +82,13 @@ class MasterDataSchemaTest extends TestCase
             'is_active' => true,
         ]);
 
+        $location = $warehouse->locations()->create([
+            'code' => 'RAK-01',
+            'name' => 'Rak Utama 1',
+            'type' => 'RACK',
+            'is_active' => true,
+        ]);
+
         $product = Product::create([
             'sku' => 'PRD-EL-001',
             'name' => 'Smart Sensor Module',
@@ -105,6 +117,8 @@ class MasterDataSchemaTest extends TestCase
         $this->assertTrue($unit->products->contains($product));
         $this->assertTrue($supplier->products->contains($product));
 
-        $this->assertNotNull($warehouse->id);
+        $this->assertCount(1, $warehouse->locations);
+        $this->assertEquals($location->id, $warehouse->locations->first()->id);
     }
 }
+
