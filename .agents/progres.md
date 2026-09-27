@@ -12,7 +12,7 @@ Dokumen ini melacak seluruh tahapan pengerjaan proyek dari awal hingga siap prod
 | **Phase 0** | Environment & Project Setup | `COMPLETED` | Inisialisasi Laravel, Git, CI Workflow, Environment |
 | **Phase 1** | Project Foundation & Auth | `COMPLETED` | Authentication, RBAC (Roles & Permissions), Base Layout & Navigation |
 | **Phase 2** | Master Data Management | `COMPLETED` | Schema, Model, CRUD Category, Unit, Supplier, Warehouse & Locations, Product |
-| **Phase 3** | Inventory Core & Ledger | `NOT STARTED` | Dual-layer Inventory (Stock & Ledger), Stock In/Out, Transfer, Adjustment |
+| **Phase 3** | Inventory Core & Ledger | `COMPLETED` | Dual-layer Inventory (Stock & Ledger), Stock In/Out, Transfer, Adjustment |
 | **Phase 4** | Purchasing & Sales Integration | `NOT STARTED` | Purchase Orders, Receiving -> Stock In, Sales -> Stock Out |
 | **Phase 5** | Stock Card & Analytics Dashboard | `NOT STARTED` | Kartu Stok real-time, KPI Widgets, Interactive Charts (ApexCharts) |
 | **Phase 6** | Demand Forecasting Engine | `NOT STARTED` | Moving Average, Exponential Smoothing, Forecast History & Accuracy |
@@ -120,23 +120,39 @@ Dokumen ini melacak seluruh tahapan pengerjaan proyek dari awal hingga siap prod
 ### Phase 3 — Inventory Core & Transaction Ledger
 > **Tujuan**: Membangun mesin inti pencatatan persediaan dengan arsitektur dua lapis (*Current Stock* dan *Immutable Ledger*).
 
-- [ ] **Skema Database Inventory**:
+- [x] **Skema Database Inventory**:
   - `inventory_stocks` (product_id, warehouse_id, quantity, reserved_quantity, available_quantity) -> Unique composite `(product_id, warehouse_id)`.
-  - `inventory_transactions` (product_id, warehouse_id, transaction_type, quantity, stock_before, stock_after, reference_type, reference_id, transaction_date, performed_by).
-- [ ] **Service & Action Layer (Transaksional)**:
-  - `InventoryService` / Action Classes: `CreateStockIn`, `CreateStockOut`, `TransferStock`, `AdjustStock`.
-  - Pemanfaatan `DB::transaction()` dan row-locking `lockForUpdate()` untuk mencegah *race conditions*.
-- [ ] **Aturan Mutasi Stok**:
-  - **Stock In**: Pembelian, Retur Masuk, Penyesuaian Masuk.
-  - **Stock Out**: Penjualan, Retur Keluar, Penyesuaian Keluar (validasi stok mencukupi).
-  - **Stock Transfer**: Atomik (TRANSFER_OUT di gudang asal & TRANSFER_IN di gudang tujuan dalam 1 transaksi DB).
-  - **Stock Adjustment**: Koreksi stok fisik dengan pencatatan selisih dan catatan alasan.
-- [ ] **Stock Card (Kartu Stok)**:
-  - Riwayat lengkap pergerakan stok per produk & gudang secara kronologis real-time.
+  - `inventory_transactions` (product_id, warehouse_id, transaction_type, quantity, stock_before, stock_after, reference_type, reference_id, notes, performed_by, transaction_date).
+- [x] **Service & Action Layer (Domain Engine)**:
+  - `InventoryService` dengan arsitektur transaksi atomik berbasis `DB::transaction()` dan row-locking `lockForUpdate()` untuk mencegah *race conditions* dan inkonsistensi saldo stok.
+  - Method `stockIn()`, `stockOut()`, `transfer()`, `adjust()`, `getStock()`, `getTotalStock()`.
+  - Custom Exception `InsufficientStockException` untuk memvalidasi defisit kuantitas sebelum pengeluaran atau transfer.
+- [x] **Form Requests & Validasi Backend**:
+  - `StockInRequest`: Validasi kuantitas masuk $> 0$, tipe transaksi masuk terdaftar, dan tanggal.
+  - `StockOutRequest`: Validasi kuantitas keluar $> 0$, tipe transaksi keluar terdaftar, dan pencegahan saldo minus.
+  - `StockTransferRequest`: Validasi pemindahan antar-gudang berbeda (`from_warehouse_id != to_warehouse_id`) dan kecukupan stok sumber.
+  - `StockAdjustmentRequest`: Validasi kuantitas fisik aktual $\ge 0$, alasan penyesuaian (opname), dan kalkulasi delta mutasi otomatis.
+- [x] **Controllers & AJAX Endpoint**:
+  - `InventoryController`: Halaman ringkasan stok multi-gudang (`overview`), formulir dan aksi mutasi masuk (`stockInForm`/`processStockIn`), mutasi keluar (`stockOutForm`/`processStockOut`), transfer antar-gudang (`transferForm`/`processTransfer`), serta opname fisik (`adjustmentForm`/`processAdjustment`).
+  - Endpoint `getStockAjax` (`GET /inventory/api/stock?product_id=X&warehouse_id=Y`) untuk pengecekan stok live real-time di UI dropdown form.
+  - `StockCardController`: Kalkulasi buku besar kartu stok, perhitungan saldo awal sebelum rentang tanggal filter, dan saldo berjalan (*running cumulative balance*) baris per baris.
+- [x] **UI Views & Interaktivitas**:
+  - `inventory/overview.blade.php`: KPI Metrik Persediaan (Total Unit, Valuasi IDR, Low Stock, Out of Stock), filter pencarian/kategori/gudang, tabel inventori multi-gudang, dan status kesehatan buffer.
+  - `inventory/stock-in.blade.php`: Formulir penerimaan barang dengan preview estimasi saldo akhir real-time via Alpine.js.
+  - `inventory/stock-out.blade.php`: Formulir pengeluaran barang dengan live checker sisa stok dan proteksi tombol submit saat defisit.
+  - `inventory/transfer.blade.php`: Formulir relokasi antar-gudang dengan live checker stok gudang asal dan pencegahan gudang asal-tujuan yang sama.
+  - `inventory/adjustment.blade.php`: Formulir rekonsiliasi stok fisik / stock opname dengan kalkulasi delta mutasi live (+/-).
+  - `inventory/stock-card.blade.php`: Tampilan buku besar kartu stok real-time, filter tanggal & gudang, ringkasan saldo awal/masuk/keluar/akhir, dan tabel rincian transaksi mutasi.
+- [x] **Seeder & Automated Tests**:
+  - `InventorySeeder`: Seeder riwayat mutasi stok awal, transfer antar-gudang, dan transaksi penjualan demo.
+  - `InventoryServiceTest.php`: 7 test cases (stock in, stock out, insufficient stock exception, atomic transfer, transfer validation, opname increase & decrease).
+  - `InventoryStockTest.php`: 8 test cases (auth protection, overview display, stock in form & submit, stock out form & submit, deficit rejection, transfer antar gudang, stock adjustment, AJAX stock lookup).
+  - `StockCardTest.php`: 2 test cases (empty state & running balance calculation with historic pre-filter balance).
 
 **Acceptance Criteria**:
 - Nilai stok pada `inventory_stocks` selalu identik dengan kalkulasi kumulatif `inventory_transactions`.
 - Tidak ada mutasi stok yang terjadi tanpa menghasilkan record ledger transaksi.
+- Seluruh 65 feature & unit automated tests berstatus `100% PASS`.
 
 ---
 

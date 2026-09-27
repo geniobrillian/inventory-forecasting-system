@@ -53,5 +53,33 @@ Route::middleware('auth')->group(function () {
         Route::patch('products/{product}/toggle-status', [\App\Http\Controllers\MasterData\ProductController::class, 'toggleStatus'])->name('products.toggle-status');
         Route::resource('products', \App\Http\Controllers\MasterData\ProductController::class);
     });
+
+    // Inventory Core & Transaction Ledger
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/overview', [\App\Http\Controllers\Inventory\InventoryController::class, 'overview'])->name('overview');
+        
+        // Stock In
+        Route::get('/stock-in', [\App\Http\Controllers\Inventory\InventoryController::class, 'stockInForm'])->name('stock-in');
+        Route::post('/stock-in', [\App\Http\Controllers\Inventory\InventoryController::class, 'processStockIn'])->name('stock-in.process');
+
+        // Stock Out
+        Route::get('/stock-out', [\App\Http\Controllers\Inventory\InventoryController::class, 'stockOutForm'])->name('stock-out');
+        Route::post('/stock-out', [\App\Http\Controllers\Inventory\InventoryController::class, 'processStockOut'])->name('stock-out.process');
+
+        // Transfer
+        Route::get('/transfer', [\App\Http\Controllers\Inventory\InventoryController::class, 'transferForm'])->name('transfer');
+        Route::post('/transfer', [\App\Http\Controllers\Inventory\InventoryController::class, 'processTransfer'])->name('transfer.process');
+
+        // Adjustment / Opname
+        Route::get('/adjustment', [\App\Http\Controllers\Inventory\InventoryController::class, 'adjustmentForm'])->name('adjustment');
+        Route::post('/adjustment', [\App\Http\Controllers\Inventory\InventoryController::class, 'processAdjustment'])->name('adjustment.process');
+
+        // Dynamic AJAX Stock Checker
+        Route::get('/api/stock', [\App\Http\Controllers\Inventory\InventoryController::class, 'getStockAjax'])->name('api.stock');
+
+        // Stock Card (Kartu Stok)
+        Route::get('/stock-card', [\App\Http\Controllers\Inventory\StockCardController::class, 'index'])->name('stock-card');
+    });
 });
+
 

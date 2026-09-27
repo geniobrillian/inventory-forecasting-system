@@ -50,4 +50,25 @@ class Product extends Model
     {
         return $this->belongsTo(Supplier::class);
     }
+
+    public function inventoryStocks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(InventoryStock::class);
+    }
+
+    public function inventoryTransactions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(InventoryTransaction::class);
+    }
+
+    public function getTotalStockAttribute(): int
+    {
+        return (int) $this->inventoryStocks()->sum('quantity');
+    }
+
+    public function getTotalAvailableStockAttribute(): int
+    {
+        return (int) $this->inventoryStocks()->get()->sum(fn ($s) => $s->available_quantity);
+    }
 }
+
