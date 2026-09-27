@@ -80,6 +80,34 @@ Route::middleware('auth')->group(function () {
         // Stock Card (Kartu Stok)
         Route::get('/stock-card', [\App\Http\Controllers\Inventory\StockCardController::class, 'index'])->name('stock-card');
     });
+
+    // Purchasing & Procurement
+    Route::prefix('purchasing')->name('purchasing.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'store'])->name('store');
+        Route::get('/{purchase}', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'show'])->name('show');
+        Route::get('/{purchase}/edit', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'edit'])->name('edit');
+        Route::put('/{purchase}', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'update'])->name('update');
+        Route::delete('/{purchase}', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'destroy'])->name('destroy');
+        Route::patch('/{purchase}/order', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'order'])->name('order');
+        Route::get('/{purchase}/receive', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'receiveForm'])->name('receive');
+        Route::post('/{purchase}/receive', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'processReceive'])->name('receive.process');
+        Route::patch('/{purchase}/cancel', [\App\Http\Controllers\Purchasing\PurchaseController::class, 'cancel'])->name('cancel');
+    });
+
+    // Sales & Outgoing Orders
+    Route::prefix('sales')->name('sales.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Sales\SaleController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Sales\SaleController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Sales\SaleController::class, 'store'])->name('store');
+        Route::get('/{sale}', [\App\Http\Controllers\Sales\SaleController::class, 'show'])->name('show');
+        Route::get('/{sale}/edit', [\App\Http\Controllers\Sales\SaleController::class, 'edit'])->name('edit');
+        Route::put('/{sale}', [\App\Http\Controllers\Sales\SaleController::class, 'update'])->name('update');
+        Route::patch('/{sale}/complete', [\App\Http\Controllers\Sales\SaleController::class, 'complete'])->name('complete');
+        Route::patch('/{sale}/cancel', [\App\Http\Controllers\Sales\SaleController::class, 'cancel'])->name('cancel');
+    });
 });
+
 
 

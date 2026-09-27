@@ -13,7 +13,7 @@ Dokumen ini melacak seluruh tahapan pengerjaan proyek dari awal hingga siap prod
 | **Phase 1** | Project Foundation & Auth | `COMPLETED` | Authentication, RBAC (Roles & Permissions), Base Layout & Navigation |
 | **Phase 2** | Master Data Management | `COMPLETED` | Schema, Model, CRUD Category, Unit, Supplier, Warehouse & Locations, Product |
 | **Phase 3** | Inventory Core & Ledger | `COMPLETED` | Dual-layer Inventory (Stock & Ledger), Stock In/Out, Transfer, Adjustment |
-| **Phase 4** | Purchasing & Sales Integration | `NOT STARTED` | Purchase Orders, Receiving -> Stock In, Sales -> Stock Out |
+| **Phase 4** | Purchasing & Sales Integration | `COMPLETED` | Purchase Orders, Receiving -> Stock In, Sales -> Stock Out |
 | **Phase 5** | Stock Card & Analytics Dashboard | `NOT STARTED` | Kartu Stok real-time, KPI Widgets, Interactive Charts (ApexCharts) |
 | **Phase 6** | Demand Forecasting Engine | `NOT STARTED` | Moving Average, Exponential Smoothing, Forecast History & Accuracy |
 | **Phase 7** | Replenishment & Decision Engine | `NOT STARTED` | Safety Stock, ROP, Days Until Stockout, Restock Recommendations |
@@ -157,20 +157,50 @@ Dokumen ini melacak seluruh tahapan pengerjaan proyek dari awal hingga siap prod
 ---
 
 ### Phase 4 — Purchasing & Sales Integration
-> **Tujuan**: Menghubungkan proses bisnis pengadaan (*Purchasing*) dan penjualan (*Sales*) langsung ke mutasi stok inventaris.
+> **Tujuan**: Menghubungkan proses bisnis pengadaan (*Purchasing*) dan penjualan (*Sales*) langsung ke mutasi stok inventaris dengan konsistensi dua lapis (*Current Stock* & *Immutable Ledger*).
 
-- [ ] **Purchasing Module**:
-  - Skema `purchases` & `purchase_items`.
-  - Status PO: `DRAFT`, `ORDERED`, `PARTIALLY_RECEIVED`, `RECEIVED`, `CANCELLED`.
-  - Alur Penerimaan (*Receiving*): Pembuatan Purchase Order tidak langsung menambah stok; stok masuk dipicu saat proses penerimaan barang fisik terjadi.
-- [ ] **Sales Module**:
-  - Skema `sales` & `sale_items`.
-  - Status Penjualan: `DRAFT`, `COMPLETED`, `CANCELLED`.
-  - Pengurangan stok otomatis (*Stock Out*) saat status penjualan `COMPLETED`.
+- [x] **Purchasing & Procurement Module**:
+  - Skema database `purchases` & `purchase_items` (nomor PO unik berurutan `PO-YYYYMM-XXXX`, supplier_id, warehouse_id, purchase_date, expected_date, subtotal, discount, tax, shipping_cost, total, notes, status `[DRAFT, ORDERED, PARTIALLY_RECEIVED, RECEIVED, CANCELLED]`).
+  - Accessor model & status helpers: `isDraft()`, `canReceive()`, `canCancel()`, `canEdit()`, `receiving_progress_percent`.
+  - Service Layer `PurchaseService`:
+    - `generatePurchaseNumber()`: Pembuatan kode faktur pengadaan otomatis berurutan.
+    - `createPurchase()` & `updatePurchase()`: Validasi item pesanan, penghitungan subtotal, diskon, pajak, dan ongkos kirim.
+    - `orderPurchase()`: Transisi status dari `DRAFT` menjadi `ORDERED`.
+    - `receiveItems()`: Pemrosesan penerimaan fisik barang (GRN), pencatatan kuantitas diterima per item, pembaruan status PO secara cerdas (`PARTIALLY_RECEIVED` atau `RECEIVED`), dan pemicu atomik penambahan stok gudang (`InventoryService::stockIn` dengan `transaction_type = PURCHASE`).
+    - `cancelPurchase()`: Pembatalan pesanan jika belum ada fisik barang yang diterima.
+  - Form Requests: `PurchaseRequest` dan `ReceivePurchaseRequest` dengan validasi ketat dan alias field dinamis.
+  - UI Purchasing:
+    - `purchasing/index.blade.php`: Ringkasan PO, filter supplier/gudang/status/tanggal, search bar, status badges, progress bar penerimaan, dan pagination.
+    - `purchasing/create.blade.php` & `purchasing/edit.blade.php`: Kalkulator pesanan dinamis Alpine.js dengan input diskon, pajak, subtotal baris otomatis, dan validasi item sebelum submit.
+    - `purchasing/show.blade.php`: Detail PO, kartu progres penerimaan, rincian barang dan biaya finansial, aksi ajukan pesan, terima barang, batalkan PO, dan print-ready faktur.
+    - `purchasing/receive.blade.php`: Form penerimaan fisik barang (GRN) dengan input sisa kuantitas belum diterima dan validasi batas maksimal per item.
+
+- [x] **Sales & Commercial Orders Module**:
+  - Skema database `sales` & `sale_items` (nomor faktur unik berurutan `INV-YYYYMM-XXXX`, warehouse_id, customer_name, customer_phone, sale_date, status `[DRAFT, COMPLETED, CANCELLED]`, payment_method `[CASH, TRANSFER, QRIS, DEBT, OTHER]`, payment_status `[PAID, PARTIAL, UNPAID]`, subtotal, discount, tax, shipping_cost, paid_amount, change_amount, total, notes).
+  - Accessor model & status helpers: `isDraft()`, `isCompleted()`, `isCancelled()`, `canComplete()`, `canCancel()`.
+  - Service Layer `SalesService`:
+    - `generateInvoiceNumber()`: Pembuatan kode faktur penjualan otomatis berurutan.
+    - `createSale()`: Pembuatan faktur penjualan. Jika status `COMPLETED`, sistem langsung memotong stok gudang secara atomik (`InventoryService::stockOut` dengan `transaction_type = SALE`). Jika stok tidak mencukupi, dilempar `InsufficientStockException`.
+    - `updateSale()`: Pembaruan draf penjualan dengan kalkulasi ulang nominal dan sinkronisasi item.
+    - `completeSale()`: Penyelesaian draf penjualan dan pemotongan stok gudang secara atomik.
+    - `cancelSale()`: Pembatalan penjualan. Jika sebelumnya berstatus `COMPLETED`, stok barang dikembalikan otomatis ke gudang via transaksi ledger bertipe `RETURN_IN`.
+  - Form Request: `SaleRequest` dengan validasi kuantitas item, harga jual, dan opsi pembayaran.
+  - UI Sales:
+    - `sales/index.blade.php`: Ringkasan transaksi penjualan, filter gudang/status/tanggal/search pelanggan & faktur, status pembayaran badges, dan pagination.
+    - `sales/create.blade.php` & `sales/edit.blade.php`: POS / Kasir Penjualan interaktif Alpine.js dengan cek sisa stok gudang secara live, kalkulasi subtotal, diskon %, pajak %, ongkir, uang dibayar, dan nominal kembalian real-time.
+    - `sales/show.blade.php`: Tampilan faktur penjualan lengkap, status pembayaran, kasir/petugas, rincian produk, cetak faktur, serta aksi selesaikan draf atau batalkan penjualan (dengan pengembalian stok).
+
+- [x] **Seeder & Automated Feature Test Suite**:
+  - `PurchasingSalesSeeder`: Seeder realistis untuk skenario PO diterima lengkap (`RECEIVED`), PO diterima sebagian (`PARTIALLY_RECEIVED`), draf PO, penjualan transfer lunas (`COMPLETED`), penjualan tunai retail (`COMPLETED`), dan draf piutang (`DRAFT`).
+  - `PurchaseTest.php` (4 test cases): Create draft PO without inflating stock, transition to ORDERED, partial and full receiving triggering atomic stock in and ledger recording, cancel PO.
+  - `SaleTest.php` (5 test cases): View index, create draft sale without stock deduction, create completed sale with atomic stock deduction and ledger recording, deficit rejection (`InsufficientStockException`), cancel completed sale restoring stock via `RETURN_IN`.
+  - `PurchasingSalesIntegrationTest.php` (1 comprehensive lifecycle test case): Pengujian end-to-end terintegrasi pengadaan PO -> penerimaan barang -> stok naik -> penjualan draf -> penjualan selesai -> stok turun -> pembatalan penjualan -> stok kembali -> verifikasi 4 record transaksi ledger kartu stok.
 
 **Acceptance Criteria**:
-- Transaksi Purchase yang berstatus diterima menghasilkan transaksi Stock In secara otomatis.
-- Transaksi Sales yang selesai memotong stok via Stock Out secara atomik.
+- Invarian Pengadaan Terpenuhi: Pembuatan PO (DRAFT/ORDERED) tidak pernah menambah saldo stok fisik sebelum proses penerimaan barang fisik (`receiveItems`).
+- Invarian Penjualan Terpenuhi: Penjualan berstatus `COMPLETED` selalu memotong saldo stok fisik dan mencatat record transaksi `SALE`. Jika dibatalkan, stok pulih melalui record `RETURN_IN`.
+- Seluruh automated test suite (75 tests, 261 assertions) berstatus `100% PASS`.
+- Fresh migration dan seeding (`php artisan migrate:fresh --seed`) berjalan tanpa kendala.
 
 ---
 
