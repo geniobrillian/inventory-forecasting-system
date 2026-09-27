@@ -61,6 +61,16 @@ class Product extends Model
         return $this->hasMany(InventoryTransaction::class);
     }
 
+    public function purchaseItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PurchaseItem::class);
+    }
+
+    public function saleItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SaleItem::class);
+    }
+
     public function getTotalStockAttribute(): int
     {
         return (int) $this->inventoryStocks()->sum('quantity');
