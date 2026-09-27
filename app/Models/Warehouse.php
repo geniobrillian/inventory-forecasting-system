@@ -29,5 +29,16 @@ class Warehouse extends Model
     {
         return $this->hasMany(WarehouseLocation::class);
     }
+
+    public function inventoryStocks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(InventoryStock::class);
+    }
+
+    public function inventoryTransactions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(InventoryTransaction::class);
+    }
 }
+
 
