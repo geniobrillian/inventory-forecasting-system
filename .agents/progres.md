@@ -11,7 +11,7 @@ Dokumen ini melacak seluruh tahapan pengerjaan proyek dari awal hingga siap prod
 |---|---|---|---|
 | **Phase 0** | Environment & Project Setup | `COMPLETED` | Inisialisasi Laravel, Git, CI Workflow, Environment |
 | **Phase 1** | Project Foundation & Auth | `COMPLETED` | Authentication, RBAC (Roles & Permissions), Base Layout & Navigation |
-| **Phase 2** | Master Data Management | `IN PROGRESS` | Schema, Model, CRUD Category, Unit, Supplier, Warehouse, Product |
+| **Phase 2** | Master Data Management | `COMPLETED` | Schema, Model, CRUD Category, Unit, Supplier, Warehouse & Locations, Product |
 | **Phase 3** | Inventory Core & Ledger | `NOT STARTED` | Dual-layer Inventory (Stock & Ledger), Stock In/Out, Transfer, Adjustment |
 | **Phase 4** | Purchasing & Sales Integration | `NOT STARTED` | Purchase Orders, Receiving -> Stock In, Sales -> Stock Out |
 | **Phase 5** | Stock Card & Analytics Dashboard | `NOT STARTED` | Kartu Stok real-time, KPI Widgets, Interactive Charts (ApexCharts) |
@@ -74,23 +74,46 @@ Dokumen ini melacak seluruh tahapan pengerjaan proyek dari awal hingga siap prod
 > **Tujuan**: Menyediakan manajemen data master yang lengkap dan tervalidasi sebagai fondasi operasional inventory.
 
 - [x] **Database Schema & Eloquent Models**:
-  - `categories` (id, name, slug, description, is_active, soft deletes).
-  - `units` (id, name, code, symbol, description, is_active, soft deletes).
-  - `suppliers` (id, code, name, contact_person, phone, email, address, default_lead_time_days, is_active, soft deletes).
-  - `warehouses` (id, code, name, address, description, is_active, soft deletes).
-  - `products` (id, sku [indexed], name, category_id, unit_id, supplier_id, purchase_price, selling_price, minimum_stock, lead_time_days, forecast_method, is_active, soft deletes).
+  - `categories` (id, name, slug, description, is_active, timestamps, soft deletes).
+  - `units` (id, name, code, symbol, description, is_active, timestamps, soft deletes).
+  - `suppliers` (id, code, name, contact_person, phone, email, address, default_lead_time_days, is_active, timestamps, soft deletes).
+  - `warehouses` (id, code, name, address, description, is_active, timestamps, soft deletes).
+  - `warehouse_locations` (id, warehouse_id, code, name, type [RACK, ZONE, BIN, AISLE, DEFAULT], description, is_active, timestamps, soft deletes).
+  - `products` (id, sku [indexed], name, category_id, unit_id, supplier_id, purchase_price, selling_price, minimum_stock, lead_time_days, forecast_method, is_active, timestamps, soft deletes).
   - Relasi Eloquent lengkap (`belongsTo`, `hasMany`).
-- [ ] **Warehouse Locations**:
-  - Sub-lokasi internal gudang (`warehouse_locations`: rak, zona, bin).
-- [ ] **Form Requests & Backend Validation**:
-  - Validasi SKU unik, harga non-negatif, lead time >= 0, dsb.
-- [ ] **UI CRUD & Interaksi**:
-  - CRUD Category, Unit, Supplier, Warehouse, dan Product.
-  - Fitur Search, Filter (kategori, supplier, status aktif), dan Pagination.
-  - Soft delete / Deaktivasi data master untuk melindungi riwayat transaksi historis.
+- [x] **Warehouse Locations Management**:
+  - Sub-lokasi internal gudang (`warehouse_locations`: rak, zona, bin, dsb.) dengan manajemen terintegrasi di dalam halaman detail gudang (`warehouses.show`).
+  - Modal interaktif Alpine.js untuk tambah dan edit sub-lokasi beserta toggle status aktif/nonaktif.
+- [x] **Form Requests & Backend Validation**:
+  - `CategoryRequest`: Validasi nama & slug unik (mengabaikan soft deletes), deskripsi, dan status aktif.
+  - `UnitRequest`: Validasi kode unik dengan auto-uppercase (e.g. `PCS`, `BOX`, `KG`), nama satuan, simbol, dan status.
+  - `SupplierRequest`: Validasi kode supplier unik dengan auto-uppercase, lead time $\ge 0$, kontak PIC, email, dan telepon.
+  - `WarehouseRequest`: Validasi kode gudang unik dengan auto-uppercase, nama, alamat, dan deskripsi.
+  - `WarehouseLocationRequest`: Validasi kode unik per gudang (composite unique constraint), tipe lokasi terdaftar.
+  - `ProductRequest`: Validasi SKU unik dengan auto-uppercase, validasi foreign keys (`category_id`, `unit_id`, `supplier_id`), harga beli & jual non-negatif, minimum stock $\ge 0$, lead time $\ge 0$, dan metode peramalan (`MOVING_AVERAGE`, `EXPONENTIAL_SMOOTHING`).
+- [x] **Controllers & Routing**:
+  - `CategoryController`, `UnitController`, `SupplierController`, `WarehouseController`, `WarehouseLocationController`, `ProductController`.
+  - Resource routes lengkap di bawah prefix `/master-data`.
+  - Quick status toggle endpoint (`PATCH .../toggle-status`) untuk seluruh entitas master data.
+  - Perlindungan penghapusan (*safe delete*): Mencegah penghapusan master data jika masih dirujuk oleh produk aktif.
+- [x] **UI CRUD & Interaksi (Dark-Slate Modern Aesthetic)**:
+  - Tampilan CRUD lengkap: Categories (`index`, `create`, `edit`), Units (`index`, `create`, `edit`), Suppliers (`index`, `create`, `edit`, `show`), Warehouses (`index`, `create`, `edit`, `show`), Products (`index`, `create`, `edit`, `show`).
+  - Overview KPI Stats Cards pada setiap modul (Total, Aktif, Nonaktif, Rata-rata margin, Distribusi lokasi).
+  - Fitur Search instan dan Filter dinamis (kategori, supplier, status aktif, metode forecast) dengan persistensi query pagination.
+  - Integrasi navigasi menu sidebar dinamis sesuai role & permission.
+- [x] **Seeder Master Data**:
+  - `MasterDataSeeder` berisi katalog data realistis: Kategori hardware & networking, satuan UoM, vendor supplier terpercaya, gudang Jakarta & Surabaya dengan sub-lokasi rak/zona, serta produk SKU lengkap.
+- [x] **Automated Tests**:
+  - `MasterDataSchemaTest.php` (2 test cases: integritas tabel, kolom, dan relasi).
+  - `CategoryTest.php` (6 test cases: listing, create, unique constraint, update, soft delete, toggle status).
+  - `UnitTest.php` (6 test cases: listing, create, unique uppercase code, update, soft delete, toggle status).
+  - `SupplierTest.php` (7 test cases: listing, create, lead time validation, show page, update, soft delete, toggle status).
+  - `WarehouseTest.php` (5 test cases: listing, create, internal location management, soft delete, toggle status).
+  - `ProductTest.php` (8 test cases: listing, create, validation rules, show page & profit margin, update, soft delete, toggle status, search & filters).
 
 **Acceptance Criteria**:
-- Seluruh data master dapat dibuat, diubah, dinonaktifkan, dan dicari dengan validasi yang ketat.
+- Seluruh data master (Category, Unit, Supplier, Warehouse, WarehouseLocation, Product) dapat dibuat, diubah, dinonaktifkan, dihapus secara aman, dicari, dan difilter dengan validasi ketat.
+- Seluruh unit & feature tests (48 tests, 161 assertions) berstatus `100% PASS`.
 
 ---
 

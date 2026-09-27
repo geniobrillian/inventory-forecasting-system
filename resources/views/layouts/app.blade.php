@@ -76,26 +76,26 @@
                     @if(auth()->user()->hasAnyRole(['super_admin', 'warehouse_staff', 'purchasing', 'manager']))
                         <div class="pt-4 pb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Master Data</div>
 
-                        <a href="{{ route('dashboard') }}"
-                           class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/60 hover:text-white transition">
-                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <a href="{{ route('products.index') }}"
+                           class="flex items-center gap-3 px-3 py-2 rounded-xl transition {{ request()->routeIs('products.*') ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white' }}">
+                            <svg class="w-4 h-4 {{ request()->routeIs('products.*') ? 'text-indigo-400' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
                             <span>Products</span>
                         </a>
 
                         @role('super_admin')
-                            <a href="{{ route('dashboard') }}"
-                               class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/60 hover:text-white transition">
-                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <a href="{{ route('categories.index') }}"
+                               class="flex items-center gap-3 px-3 py-2 rounded-xl transition {{ request()->routeIs('categories.*') ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white' }}">
+                                <svg class="w-4 h-4 {{ request()->routeIs('categories.*') ? 'text-indigo-400' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                                 </svg>
                                 <span>Categories</span>
                             </a>
 
-                            <a href="{{ route('dashboard') }}"
-                               class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/60 hover:text-white transition">
-                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <a href="{{ route('units.index') }}"
+                               class="flex items-center gap-3 px-3 py-2 rounded-xl transition {{ request()->routeIs('units.*') ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white' }}">
+                                <svg class="w-4 h-4 {{ request()->routeIs('units.*') ? 'text-indigo-400' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                                 </svg>
                                 <span>Units</span>
@@ -103,9 +103,9 @@
                         @endrole
 
                         @if(auth()->user()->hasAnyRole(['super_admin', 'purchasing']))
-                            <a href="{{ route('dashboard') }}"
-                               class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/60 hover:text-white transition">
-                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <a href="{{ route('suppliers.index') }}"
+                               class="flex items-center gap-3 px-3 py-2 rounded-xl transition {{ request()->routeIs('suppliers.*') ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white' }}">
+                                <svg class="w-4 h-4 {{ request()->routeIs('suppliers.*') ? 'text-indigo-400' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
                                 <span>Suppliers</span>
@@ -113,9 +113,9 @@
                         @endif
 
                         @if(auth()->user()->hasAnyRole(['super_admin', 'warehouse_staff', 'manager']))
-                            <a href="{{ route('dashboard') }}"
-                               class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/60 hover:text-white transition">
-                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <a href="{{ route('warehouses.index') }}"
+                               class="flex items-center gap-3 px-3 py-2 rounded-xl transition {{ request()->routeIs('warehouses.*') ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white' }}">
+                                <svg class="w-4 h-4 {{ request()->routeIs('warehouses.*') ? 'text-indigo-400' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                 </svg>
                                 <span>Warehouses</span>
@@ -300,7 +300,11 @@
                     </div>
                 @endif
 
-                {{ $slot }}
+                @if(isset($slot))
+                    {{ $slot }}
+                @else
+                    @yield('content')
+                @endif
             </main>
         </div>
     </div>
