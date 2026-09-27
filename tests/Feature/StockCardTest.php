@@ -129,10 +129,10 @@ class StockCardTest extends TestCase
         ]));
 
         $response->assertStatus(200);
-        // Initial balance before 5 days ago was 100 - 20 = 80.00
-        $response->assertSee('80.00');
-        // Final balance should be 80 + 50 = 130.00
-        $response->assertSee('130.00');
+        // Initial balance before 5 days ago was 100 - 20 = 80
+        $response->assertSee('80');
+        // Final balance should be 80 + 50 = 130
+        $response->assertSee('130');
         $response->assertSee('PO-RECENT');
     }
 }

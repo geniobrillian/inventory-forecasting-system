@@ -14,7 +14,7 @@ Dokumen ini melacak seluruh tahapan pengerjaan proyek dari awal hingga siap prod
 | **Phase 2** | Master Data Management | `COMPLETED` | Schema, Model, CRUD Category, Unit, Supplier, Warehouse & Locations, Product |
 | **Phase 3** | Inventory Core & Ledger | `COMPLETED` | Dual-layer Inventory (Stock & Ledger), Stock In/Out, Transfer, Adjustment |
 | **Phase 4** | Purchasing & Sales Integration | `COMPLETED` | Purchase Orders, Receiving -> Stock In, Sales -> Stock Out |
-| **Phase 5** | Stock Card & Analytics Dashboard | `NOT STARTED` | Kartu Stok real-time, KPI Widgets, Interactive Charts (ApexCharts) |
+| **Phase 5** | Stock Card & Analytics Dashboard | `COMPLETED` | Kartu Stok real-time, KPI Widgets, Interactive Charts (ApexCharts) |
 | **Phase 6** | Demand Forecasting Engine | `NOT STARTED` | Moving Average, Exponential Smoothing, Forecast History & Accuracy |
 | **Phase 7** | Replenishment & Decision Engine | `NOT STARTED` | Safety Stock, ROP, Days Until Stockout, Restock Recommendations |
 | **Phase 8** | Automation & Notifications | `NOT STARTED` | Queue Workers, Scheduled Jobs, Email & WhatsApp Alerts |
@@ -205,23 +205,55 @@ Dokumen ini melacak seluruh tahapan pengerjaan proyek dari awal hingga siap prod
 ---
 
 ### Phase 5 — Stock Card & Analytics Dashboard
-> **Tujuan**: Menyediakan antarmuka analitik dan kartu stok yang interaktif untuk memonitor kesehatan inventaris bisnis.
+> **Tujuan**: Menyediakan antarmuka analitik dan kartu stok yang interaktif untuk memonitor kesehatan inventaris bisnis secara komprehensif.
 
-- [ ] **Kartu Stok Interaktif**:
-  - Filter berdasarkan produk, gudang, rentang tanggal, dan tipe transaksi.
-- [ ] **Dashboard KPI Widgets**:
-  - Total Produk, Total Nilai Persediaan (Inventory Value), Total Kuantitas Stok.
-  - Jumlah Produk Kritis (*Critical Stock*), Stok Menipis (*Low Stock*), dan Stok Kosong (*Out of Stock*).
-  - Indikator *Fast-Moving*, *Slow-Moving*, dan *Dead Stock*.
-  - Rasio *Inventory Turnover*.
-- [ ] **Visualisasi Interaktif (ApexCharts / Chart.js)**:
-  - Grafik tren permintaan (*Demand Trend*).
-  - Grafik tren stok historis (*Stock Trend*).
-  - Distribusi stok antar-gudang.
-  - Grafik perbandingan *Forecast vs Actual*.
+- [x] **Kartu Stok Interaktif (Stock Card Ledger)**:
+  - Filter interaktif berbasis produk, gudang, rentang tanggal (dari s/d), dan tipe transaksi (`PURCHASE`, `SALE`, `TRANSFER_IN`, `TRANSFER_OUT`, `ADJUSTMENT_IN`, `ADJUSTMENT_OUT`, `RETURN_IN`, `RETURN_OUT`, `INITIAL`).
+  - Komputasi Saldo Awal (*Initial Balance*) secara matematis sebelum rentang tanggal filter yang dipilih.
+  - Kalkulasi Saldo Berjalan (*Running Cumulative Balance*) baris per baris secara kronologis.
+  - Kartu ringkasan metrik: Saldo Awal, Total Masuk (+), Total Keluar (-), dan Saldo Akhir.
+  - Fitur cetak ramah printer (*Print View*) dengan layout kartu stok resmi.
+- [x] **Dashboard KPI Widgets & Business Intelligence Engine**:
+  - `AnalyticsService` untuk agregasi data performa tinggi tanpa N+1 queries.
+  - **4 Metrik Utama**:
+    - Total SKU Produk Aktif.
+    - Total Kuantitas Fisik Stok (Semua Gudang).
+    - Total Valuasi Persediaan (IDR) = $\sum(\text{stock.quantity} \times \text{product.purchase\_price})$.
+    - Penjualan 30 Hari Terakhir (Revenue) & Estimasi HPP / COGS 30 Hari.
+    - Rasio *Inventory Turnover* Terdisi Tahunan (*Annualized Turnover Ratio*).
+  - **Kesehatan Stok (Stock Health Breakdown)**:
+    - *Healthy Stock* ($> \text{minimum\_stock}$).
+    - *Low Stock* ($\le \text{minimum\_stock}$).
+    - *Critical Stock* ($\le 40\%$ dari minimum stock).
+    - *Out of Stock* ($= 0$).
+  - **Analisis Perputaran & Kecepatan Barang (Velocity Metrics)**:
+    - *Fast-Moving Products*: Produk dengan penjualan $\ge 20$ unit dalam 30 hari terakhir.
+    - *Slow-Moving Products*: Produk dengan penjualan rendah.
+    - *Dead Stock*: Barang tidak terjual / tidak bergerak selama $> 90$ hari lengkap dengan durasi hari tidak aktif.
+  - **Top Selling Products**: 5 produk paling laris dalam 30 hari berdasarkan volume penjualan dan kontribusi omzet.
+- [x] **Visualisasi Interaktif (ApexCharts)**:
+  - **Demand Trend Area Chart**: Grafik area tren permintaan terjual harian (14 hari terakhir) dengan tooltip interaktif dan smooth spline curve.
+  - **Stock Flow Comparison Bar Chart**: Grafik komparasi barang masuk (*Stock In*) vs barang keluar (*Stock Out*) selama 6 bulan terakhir.
+  - **Warehouse Distribution Donut Chart**: Grafik proporsi volume unit dan nilai rupiah stok antar-gudang.
+- [x] **Live Ledger Stream (Recent Activity Feed)**:
+  - Widget umpan langsung 8 transaksi mutasi stok terakhir dengan badge status, operator, kuantitas, dan saldo sebelum-sesudah.
+- [x] **Automated Feature Test Suite**:
+  - `AnalyticsDashboardTest.php` (6 test cases):
+    - Render halaman analitik dashboard dengan otentikasi.
+    - Validasi kalkulasi KPI, total stok, dan valuasi rupiah persediaan.
+    - Validasi klasifikasi kesehatan stok (Healthy, Low, Critical, Out of Stock).
+    - Validasi deteksi barang Fast-Moving dan Dead Stock.
+    - Validasi struktur datasets chart tren permintaan dan pergerakan stok.
+    - Validasi filter kartu stok per tipe transaksi.
+  - `StockCardTest.php` (2 test cases):
+    - Render kartu stok dengan keadaan awal (empty state).
+    - Perhitungan saldo awal historis dan saldo berjalan kronologis.
 
 **Acceptance Criteria**:
-- Dashboard menampilkan data real-time yang akurat tanpa membebani performa query database (eager loading & optimasi agregasi).
+- Seluruh metrik KPI dashboard teragregasi secara akurat tanpa inkonsistensi data.
+- Grafik ApexCharts termuat responsif dan menyajikan visualisasi data dinamis.
+- Seluruh test suite (81 tests, 282 assertions) berstatus `100% PASS`.
+- Fresh migration dan seeding (`php artisan migrate:fresh --seed`) berjalan tanpa kendala.
 
 ---
 
